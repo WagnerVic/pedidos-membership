@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "pedidos-membership-client-side-solution",
+    "id": "691ae244-8d2f-48f7-a925-d00239d88d26",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.20.0"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "pedidos-membership description"
+      },
+      "longDescription": {
+        "default": "pedidos-membership description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "pedidos-membership Feature",
+        "description": "The feature that activates elements of the pedidos-membership solution.",
+        "id": "c3ccd1ff-ec3b-43db-8a0d-b7bd303b825d",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/pedidos-membership.sppkg"
+  }
+}
