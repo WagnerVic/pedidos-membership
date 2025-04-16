@@ -1,43 +1,102 @@
-import * as React from 'react';
-import styles from './PedidosMembership.module.scss';
-import type { IPedidosMembershipProps } from './IPedidosMembershipProps';
-import { escape } from '@microsoft/sp-lodash-subset';
+import * as React from "react";
+import { useEffect, useState, useMemo } from "react";
+import styles from "./PedidosMembership.module.scss";
+import { IPedidosMembershipProps } from "./IPedidosMembershipProps";
+import { HttpClient } from "@microsoft/sp-http";
 
-export default class PedidosMembership extends React.Component<IPedidosMembershipProps> {
-  public render(): React.ReactElement<IPedidosMembershipProps> {
-    const {
-      description,
-      isDarkTheme,
-      environmentMessage,
-      hasTeamsContext,
-      userDisplayName
-    } = this.props;
-
-    return (
-      <section className={`${styles.pedidosMembership} ${hasTeamsContext ? styles.teams : ''}`}>
-        <div className={styles.welcome}>
-          <img alt="" src={isDarkTheme ? require('../assets/welcome-dark.png') : require('../assets/welcome-light.png')} className={styles.welcomeImage} />
-          <h2>Well done, {escape(userDisplayName)}!</h2>
-          <div>{environmentMessage}</div>
-          <div>Web part property value: <strong>{escape(description)}</strong></div>
-        </div>
-        <div>
-          <h3>Welcome to SharePoint Framework!</h3>
-          <p>
-            The SharePoint Framework (SPFx) is a extensibility model for Microsoft Viva, Microsoft Teams and SharePoint. It&#39;s the easiest way to extend Microsoft 365 with automatic Single Sign On, automatic hosting and industry standard tooling.
-          </p>
-          <h4>Learn more about SPFx development:</h4>
-          <ul className={styles.links}>
-            <li><a href="https://aka.ms/spfx" target="_blank" rel="noreferrer">SharePoint Framework Overview</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-graph" target="_blank" rel="noreferrer">Use Microsoft Graph in your solution</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-teams" target="_blank" rel="noreferrer">Build for Microsoft Teams using SharePoint Framework</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-viva" target="_blank" rel="noreferrer">Build for Microsoft Viva Connections using SharePoint Framework</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-store" target="_blank" rel="noreferrer">Publish SharePoint Framework applications to the marketplace</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-api" target="_blank" rel="noreferrer">SharePoint Framework API reference</a></li>
-            <li><a href="https://aka.ms/m365pnp" target="_blank" rel="noreferrer">Microsoft 365 Developer Community</a></li>
-          </ul>
-        </div>
-      </section>
-    );
-  }
+// 🔧 Tipagem dos itens da lista
+interface PedidoItem {
+  Id: number;
+  Title: string;
+  DetalhesdoPedido?: string;
+  Grupo?: string;
 }
+
+const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
+  const [areaAtiva, setAreaAtiva] = useState(false);
+  const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
+
+  const email = props.context.pageContext.user.email;
+
+  // 🔐 Grupo simulado baseado no e-mail do usuário
+  const grupoSimulado = useMemo(() => {
+    if (!email) return "Desconhecido";
+    if (email === "wagner.menezes@ceiaufg.onmicrosoft.com") return "Globo";
+    if (email === "geovanna@seudominio.com") return "Empresa B";
+    return "Visitante";
+  }, [email]);
+
+  // 📡 Carrega os pedidos da lista ao acessar a área restrita
+  useEffect(() => {
+    if (!areaAtiva) return;
+
+    const fetchPedidos = async () => {
+      try {
+        const response = await props.context.httpClient.get(
+          `${props.siteUrl}/_api/web/lists/getbytitle('Pedidos de Memberships')/items?$select=Id,Title,DetalhesdoPedido,Grupo`,
+          HttpClient.configurations.v1,
+          {
+            headers: {
+              Accept: "application/json;odata=nometadata",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const pedidosFiltrados = data.value.filter(
+          (item: PedidoItem) => item.Grupo === grupoSimulado
+        );
+
+        setPedidos(pedidosFiltrados);
+      } catch (error) {
+        console.error("❌ Erro ao buscar pedidos:", error);
+      }
+    };
+
+    fetchPedidos();
+  }, [areaAtiva, grupoSimulado]);
+
+  return (
+    <div className={styles.pedidosMembership}>
+      {!areaAtiva ? (
+        <div className={styles.entrada}>
+          <h2>Bem-vindo ao sistema de Memberships</h2>
+          <p>Essa área é exclusiva para membros autenticados.</p>
+          <button className={styles.botao} onClick={() => setAreaAtiva(true)}>
+            Acessar Área Restrita
+          </button>
+        </div>
+      ) : (
+        <div className={styles.areaRestrita}>
+          <h2>Área do Membership</h2>
+          <p>
+            Usuário: <strong>{email}</strong>
+          </p>
+          <p>
+            Grupo identificado: <strong>{grupoSimulado}</strong>
+          </p>
+
+          <h3 style={{ marginTop: "20px" }}>Pedidos encontrados:</h3>
+          {pedidos.length > 0 ? (
+            <ul>
+              {pedidos.map((pedido) => (
+                <li key={pedido.Id}>
+                  <strong>{pedido.Title}</strong>:{" "}
+                  {pedido.DetalhesdoPedido || "(sem descrição)"}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Nenhum pedido encontrado para esse grupo.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PedidosMembership;
