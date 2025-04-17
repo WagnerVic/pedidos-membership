@@ -4,12 +4,14 @@ import styles from "./PedidosMembership.module.scss";
 import { IPedidosMembershipProps } from "./IPedidosMembershipProps";
 import { HttpClient } from "@microsoft/sp-http";
 
-// 🔧 Tipagem dos itens da lista
+import logoGlobo from "../assets/globo.png";
+import logoEmpresaB from "../assets/empresab.png";
+
 interface PedidoItem {
   Id: number;
   Title: string;
   DetalhesdoPedido?: string;
-  Grupo?: string;
+  Grupo?: { Title: string };
 }
 
 const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
@@ -18,22 +20,25 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
 
   const email = props.context.pageContext.user.email;
 
-  // 🔐 Grupo simulado baseado no e-mail do usuário
   const grupoSimulado = useMemo(() => {
     if (!email) return "Desconhecido";
-    if (email === "wagner.menezes@ceiaufg.onmicrosoft.com") return "Globo";
+    if (email === "wagner.menezes@ceia.ufg.br") return "Globo";
     if (email === "geovanna@seudominio.com") return "Empresa B";
     return "Visitante";
   }, [email]);
 
-  // 📡 Carrega os pedidos da lista ao acessar a área restrita
+  const logosPorGrupo: Record<string, string> = {
+    "Globo": logoGlobo,
+    "Empresa B": logoEmpresaB,
+  };
+
   useEffect(() => {
     if (!areaAtiva) return;
 
     const fetchPedidos = async () => {
       try {
         const response = await props.context.httpClient.get(
-          `${props.siteUrl}/_api/web/lists/getbytitle('Pedidos de Memberships')/items?$select=Id,Title,DetalhesdoPedido,Grupo`,
+          `${props.siteUrl}/_api/web/lists/getbytitle('Pedidos de Memberships')/items?$select=Id,Title,DetalhesdoPedido,Grupo/Title&$expand=Grupo`,
           HttpClient.configurations.v1,
           {
             headers: {
@@ -47,13 +52,14 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
         }
 
         const data = await response.json();
+
         const pedidosFiltrados = data.value.filter(
-          (item: PedidoItem) => item.Grupo === grupoSimulado
+          (item: PedidoItem) => item.Grupo?.Title === grupoSimulado
         );
 
         setPedidos(pedidosFiltrados);
       } catch (error) {
-        console.error("❌ Erro ao buscar pedidos:", error);
+        console.error("Erro ao buscar pedidos:", error);
       }
     };
 
@@ -61,39 +67,73 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
   }, [areaAtiva, grupoSimulado]);
 
   return (
-    <div className={styles.pedidosMembership}>
+    <div className={styles.container}>
       {!areaAtiva ? (
-        <div className={styles.entrada}>
-          <h2>Bem-vindo ao sistema de Memberships</h2>
-          <p>Essa área é exclusiva para membros autenticados.</p>
-          <button className={styles.botao} onClick={() => setAreaAtiva(true)}>
-            Acessar Área Restrita
-          </button>
-        </div>
+        <section className={styles.hero}>
+          <div className={styles.heroContent}>
+            <h1 className={styles.heroTitle}>🔐 Acesse sua Área de Pedidos</h1>
+            <p className={styles.heroSubtitle}>
+              Visualize os pedidos vinculados ao seu grupo de Membership em um
+              só lugar.
+            </p>
+            <button
+              className={styles.ctaButton}
+              onClick={() => setAreaAtiva(true)}
+            >
+              Entrar na Área de Pedidos
+            </button>
+          </div>
+        </section>
       ) : (
-        <div className={styles.areaRestrita}>
-          <h2>Área do Membership</h2>
-          <p>
-            Usuário: <strong>{email}</strong>
-          </p>
-          <p>
-            Grupo identificado: <strong>{grupoSimulado}</strong>
-          </p>
+        <section className={styles.dashboard}>
+          <button className={styles.voltarBtn} onClick={() => setAreaAtiva(false)}>
+            ← Voltar
+          </button>
 
-          <h3 style={{ marginTop: "20px" }}>Pedidos encontrados:</h3>
+          <header className={styles.headerBox}>
+            <div className={styles.headerInfo}>
+              <h2>📋 Central de Pedidos do Membership</h2>
+              <p>
+                Usuário: <strong>{email}</strong>
+              </p>
+              <p>
+                Grupo do Membership: <strong>{grupoSimulado}</strong>
+              </p>
+            </div>
+            {logosPorGrupo[grupoSimulado] && (
+              <img
+                src={logosPorGrupo[grupoSimulado]}
+                alt={`Logo do grupo ${grupoSimulado}`}
+                className={styles.logoGrupo}
+              />
+            )}
+          </header>
+
+          <div className={styles.sectionDivider}>
+            Pedidos vinculados ao seu grupo:
+          </div>
+
           {pedidos.length > 0 ? (
-            <ul>
+            <div className={styles.grid}>
               {pedidos.map((pedido) => (
-                <li key={pedido.Id}>
-                  <strong>{pedido.Title}</strong>:{" "}
-                  {pedido.DetalhesdoPedido || "(sem descrição)"}
-                </li>
+                <div key={pedido.Id} className={styles.card}>
+                  <div className={styles.cardHeader}>
+                    <h3>{pedido.Title}</h3>
+                  </div>
+                  <div className={styles.cardBody}>
+                    <p>
+                      {pedido.DetalhesdoPedido || "Sem descrição fornecida."}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p>Nenhum pedido encontrado para esse grupo.</p>
+            <div className={styles.emptyState}>
+              <p>🚫 Nenhum pedido foi encontrado para esse grupo.</p>
+            </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   );
