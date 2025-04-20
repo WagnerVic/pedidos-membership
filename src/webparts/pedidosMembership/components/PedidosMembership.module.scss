@@ -1,8 +1,8 @@
 .container {
   font-family: 'Segoe UI', sans-serif;
   padding: 32px;
-  background: #2c2c2c;
-  border-radius: 10px;
+  background: #1e1e2f; // tom mais moderno
+  border-radius: 12px;
   color: #f3f4f6;
   margin-bottom: 32px;
 }
@@ -12,8 +12,8 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  background: linear-gradient(135deg, #787676 0%, #2e2e2e 100%);
-  border-radius: 10px;
+  background: linear-gradient(135deg, #6b7280 0%, #1f2937 100%);
+  border-radius: 12px;
   color: white;
   text-align: center;
   margin-bottom: 32px;
@@ -34,7 +34,7 @@
     }
 
     .ctaButton {
-      background-color: #1f1f1f;
+      background-color: #111827;
       color: white;
       font-weight: 600;
       padding: 12px 28px;
@@ -42,10 +42,11 @@
       border-radius: 8px;
       font-size: 15px;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      transition: all 0.2s ease;
 
       &:hover {
-        background-color: #333333;
+        background-color: #1f2937;
+        transform: scale(1.03);
       }
     }
   }
@@ -53,23 +54,21 @@
 
 .dashboard {
   .headerBox {
-    background: #3a3a3a;
+    background: #2e2e3e;
     padding: 24px;
-    border-radius: 10px;
-    margin-bottom: 32px;
+    border-radius: 12px;
+    margin-bottom: 28px;
     border: 1px solid #4b5563;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
 
     h2 {
       font-size: 22px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       color: #f9fafb;
-
-     
     }
 
     p {
@@ -80,6 +79,46 @@
         font-weight: bold;
         color: #ffffff;
       }
+    }
+  }
+
+  .filtrosContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 24px 0;
+    padding: 16px 20px;
+    background-color: #1f2937;
+    border-radius: 10px;
+    border: 1px solid #374151;
+
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #d1d5db;
+
+      select {
+        margin-left: 8px;
+      }
+    }
+  }
+
+  .selectFiltro {
+    background-color: #111827;
+    color: #f3f4f6;
+    padding: 8px 12px;
+    border: 1px solid #4b5563;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: #9ca3af;
+      transform: scale(1.03);
     }
   }
 
@@ -95,29 +134,29 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 24px;
   }
 
   .card {
     background: #1f1f1f;
-    border-radius: 10px;
+    border-radius: 14px;
     border: 1px solid #3f3f3f;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 
     &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      transform: translateY(-6px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
     }
 
     .cardHeader {
-      background: #2c2c2c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding: 16px 20px;
-      border-top-left-radius: 10px;
-      border-top-right-radius: 10px;
       border-bottom: 1px solid #4b5563;
 
       h3 {
@@ -125,18 +164,51 @@
         font-size: 17px;
         font-weight: 600;
         color: #f3f4f6;
+      }
 
-        &::before {
-          content: "📄";
-          margin-right: 6px;
-        }
+      .statusBadge {
+        font-size: 12px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: white;
+        text-transform: capitalize;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
       }
     }
 
     .cardBody {
-      padding: 20px;
+      padding: 16px 20px;
       font-size: 15px;
       color: #d1d5db;
+
+      p {
+        margin: 6px 0;
+      }
+    }
+
+    .cardFooter {
+      border-top: 1px solid #4b5563;
+      background-color: #262626;
+      padding: 14px 20px;
+      font-size: 14px;
+      color: #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .dataLabel {
+        font-weight: bold;
+        margin-right: 4px;
+      }
+
+      .dataValue {
+        color: #e0e7ff;
+        font-weight: 600;
+      }
     }
   }
 
@@ -151,14 +223,12 @@
     }
   }
 }
+
 .logoGrupo {
-  width: 200px;
+  width: 180px;
   height: auto;
   object-fit: contain;
   border-radius: 6px;
-  background-color: transparent;
-  padding: 0;
-  border: none;
 }
 
 .headerInfo {
@@ -184,3 +254,19 @@
   }
 }
 
+/* Cores dos status */
+.statusAprovado {
+  background-color: #22c55e;
+}
+.statusRecusado {
+  background-color: #ef4444;
+}
+.statusAndamento {
+  background-color: #3b82f6;
+}
+.statusPendente {
+  background-color: #f59e0b;
+}
+.statusDesconhecido {
+  background-color: #6b7280;
+}
