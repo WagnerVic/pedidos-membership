@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import styles from "./PedidosMembership.module.scss";
 import { IPedidosMembershipProps } from "./IPedidosMembershipProps";
 import { HttpClient } from "@microsoft/sp-http";
@@ -15,29 +15,27 @@ interface PedidoItem {
   GrupoId?: number;
   DatadoPedido?: string;
   Status?: string;
+  Solicitante?: { EMail: string };
 }
 
 const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
-  const [areaAtiva, setAreaAtiva] = useState(false);
-  const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
-  const [filtroStatus, setFiltroStatus] = useState("Todos");
-  const [ordenacaoData, setOrdenacaoData] = useState("desc");
+  const [isDashboardActive, setIsDashboardActive] = useState(false);
+  const [orders, setOrders] = useState<PedidoItem[]>([]);
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [dateOrder, setDateOrder] = useState("desc");
+  const [mostrarModal, setMostrarModal] = useState(false);
 
-  const email = props.context.pageContext.user.email;
+  const abrirModal = () => setMostrarModal(true);
+  const fecharModal = () => setMostrarModal(false);
 
-  const grupoSimulado = useMemo(() => {
-    if (!email) return "Desconhecido";
-    if (email === "wagner.menezes@ceia.ufg.br") return "Empresa B";
-    if (email === "geovanna@seudominio.com") return "Empresa B";
-    return "Visitante";
-  }, [email]);
+  const currentUserEmail = props.context.pageContext.user.email;
 
-  const logosPorGrupo: Record<string, string> = {
+  const groupLogos: Record<string, string> = {
     "Empresa A": logoEmpresaA,
     "Empresa B": logoEmpresaB,
   };
 
-  const getStatusClass = (status: string | undefined): string => {
+  const getStatusStyle = (status: string | undefined): string => {
     switch ((status || "").toLowerCase()) {
       case "aprovado":
         return styles.statusAprovado;
@@ -53,12 +51,12 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
   };
 
   useEffect(() => {
-    if (!areaAtiva) return;
+    if (!isDashboardActive) return;
 
-    const fetchPedidos = async () => {
+    const fetchOrders = async () => {
       try {
         const response = await props.context.httpClient.get(
-          `${props.siteUrl}/_api/web/lists/getbytitle('Pedidos de Memberships')/items?$select=Id,Title,DetalhesdoPedido,Grupo/Title,GrupoId,DatadoPedido,Status&$expand=Grupo`,
+          `${props.siteUrl}/_api/web/lists/getbytitle('Pedidos de Memberships')/items?$select=Id,Title,DetalhesdoPedido,Grupo/Title,GrupoId,DatadoPedido,Status,Solicitante/EMail&$expand=Grupo,Solicitante`,
           HttpClient.configurations.v1,
           {
             headers: {
@@ -72,49 +70,95 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
         }
 
         const data = await response.json();
-        const pedidosFiltrados = data.value.filter(
-          (item: PedidoItem) => item.Grupo?.Title === grupoSimulado
+
+        const pedidosVisiveis = data.value.filter(
+          (item: PedidoItem) =>
+            item.Solicitante?.EMail?.toLowerCase() ===
+            currentUserEmail.toLowerCase()
         );
-        setPedidos(pedidosFiltrados);
+
+        setOrders(pedidosVisiveis);
       } catch (error) {
         console.error("Erro ao buscar pedidos:", error);
       }
     };
 
-    fetchPedidos();
-  }, [areaAtiva, grupoSimulado]);
+    fetchOrders();
+  }, [isDashboardActive]);
 
-  const formatarData = (dataISO: string | undefined) => {
-    if (!dataISO) return "-";
-    const data = new Date(dataISO);
-    return data.toLocaleDateString("pt-BR");
+  const formatDate = (isoDate: string | undefined) => {
+    if (!isoDate) return "-";
+    const date = new Date(isoDate);
+    return date.toLocaleDateString("pt-BR");
   };
 
-  const pedidosFiltradosOrdenados = pedidos
-    .filter((pedido) =>
-      filtroStatus === "Todos"
+  const visibleGroupName = orders[0]?.Grupo?.Title || "Grupo Desconhecido";
+  const visibleGroupLogo = groupLogos[visibleGroupName] || null;
+
+  const filteredAndSortedOrders = orders
+    .filter((order) =>
+      statusFilter === "Todos"
         ? true
-        : pedido.Status?.toLowerCase() === filtroStatus.toLowerCase()
+        : order.Status?.toLowerCase() === statusFilter.toLowerCase()
     )
     .sort((a, b) => {
-      const dataA = new Date(a.DatadoPedido || "").getTime();
-      const dataB = new Date(b.DatadoPedido || "").getTime();
-      return ordenacaoData === "desc" ? dataB - dataA : dataA - dataB;
+      const dateA = new Date(a.DatadoPedido || "").getTime();
+      const dateB = new Date(b.DatadoPedido || "").getTime();
+      return dateOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
+
+  const renderResumoCard = () => {
+    const countByStatus = (status: string) =>
+      orders.filter((o) => o.Status?.toLowerCase() === status.toLowerCase())
+        .length;
+
+    const statusMap = [
+      { label: "Aprovado", style: styles.statusAprovado },
+      { label: "Recusado", style: styles.statusRecusado },
+      { label: "Em andamento", style: styles.statusAndamento },
+      { label: "Pendente", style: styles.statusPendente },
+    ];
+
+    if (statusFilter === "Todos") {
+      return (
+        <div className={styles.resumoStatusContainer}>
+          {statusMap.map((status) => (
+            <div
+              key={status.label}
+              className={`${styles.resumoCard} ${status.style}`}
+            >
+              <span>{status.label}</span>
+              <strong>{countByStatus(status.label)}</strong>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    const statusClass = getStatusStyle(statusFilter);
+    return (
+      <div className={styles.resumoStatusContainer}>
+        <div className={`${styles.resumoCard} ${statusClass}`}>
+          <span>{statusFilter}</span>
+          <strong>{filteredAndSortedOrders.length}</strong>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.container}>
-      {!areaAtiva ? (
+      {!isDashboardActive ? (
         <section className={styles.hero}>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>🔐 Acesse sua Área de Pedidos</h1>
             <p className={styles.heroSubtitle}>
-              Visualize os pedidos vinculados ao seu grupo de Membership em um
-              só lugar.
+              Aqui você acompanha os pedidos que você criou dentro do seu grupo
+              de Membership.
             </p>
             <button
               className={styles.ctaButton}
-              onClick={() => setAreaAtiva(true)}
+              onClick={() => setIsDashboardActive(true)}
             >
               Entrar na Área de Pedidos
             </button>
@@ -124,90 +168,116 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
         <section className={styles.dashboard}>
           <button
             className={styles.voltarBtn}
-            onClick={() => setAreaAtiva(false)}
+            onClick={() => setIsDashboardActive(false)}
           >
             ← Voltar
           </button>
 
           <header className={styles.headerBox}>
             <div className={styles.headerInfo}>
-              <h2>📋 Central de Pedidos do Membership</h2>
+              <h2>📋 Central de Acompanhamento de Pedidos</h2>
               <p>
-                Usuário: <strong>{email}</strong>
+                Usuário: <strong>{currentUserEmail}</strong>
               </p>
               <p>
-                Grupo do Membership: <strong>{grupoSimulado}</strong>
+                Grupo atual: <strong>{visibleGroupName}</strong>
               </p>
             </div>
-            {logosPorGrupo[grupoSimulado] && (
+            {visibleGroupLogo && (
               <img
-                src={logosPorGrupo[grupoSimulado]}
-                alt={`Logo do grupo ${grupoSimulado}`}
+                src={visibleGroupLogo}
+                alt={`Logo do grupo ${visibleGroupName}`}
                 className={styles.logoGrupo}
               />
             )}
           </header>
 
-          <div className={styles.filtrosContainer}>
-            <label>
-              Status:
-              <select
-                className={styles.selectFiltro}
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-              >
-                <option value="Todos">Todos</option>
-                <option value="Aprovado">Aprovado</option>
-                <option value="Recusado">Recusado</option>
-                <option value="Em andamento">Em andamento</option>
-                <option value="Pendente">Pendente</option>
-              </select>
-            </label>
+          <div className={styles.filtrosEAcao}>
+            <div className={styles.filtrosContainer}>
+              <label>
+                <select
+                  className={styles.selectFiltro}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Aprovado">Aprovado</option>
+                  <option value="Recusado">Recusado</option>
+                  <option value="Em andamento">Em andamento</option>
+                  <option value="Pendente">Pendente</option>
+                </select>
+              </label>
+              <label>
+                <select
+                  className={styles.selectFiltro}
+                  value={dateOrder}
+                  onChange={(e) => setDateOrder(e.target.value)}
+                >
+                  <option value="desc">Mais recentes</option>
+                  <option value="asc">Mais antigos</option>
+                </select>
+              </label>
+            </div>
 
-            <label>
-              Ordenar por:
-              <select
-                className={styles.selectFiltro}
-                value={ordenacaoData}
-                onChange={(e) => setOrdenacaoData(e.target.value)}
-              >
-                <option value="desc">Mais recentes</option>
-                <option value="asc">Mais antigos</option>
-              </select>
-            </label>
+            <button
+              className={styles.botaoNovaSolicitacao}
+              onClick={abrirModal}
+            >
+              Nova Solicitação
+            </button>
           </div>
+
+          {mostrarModal && (
+            <div className={styles.modalOverlay}>
+              <div className={styles.modalContent}>
+                <div className={styles.modalHeader}>
+                  <h3>Nova Solicitação</h3>
+                  <button onClick={fecharModal} className={styles.modalClose}>
+                    ✖
+                  </button>
+                </div>
+                <iframe
+                  title="Nova Solicitação de Pedidos"
+                  src="https://ceiaufg.sharepoint.com/:l:/g/FEtSwgX5xoxCu7xhfuErpyUBxQo7FAEutdQ1OWOAObFFfg?nav=ZTUwZmYzNWYtNWU3Ni00ZmY4LWE3NzItMWEzNmEwMDI2MDcy"
+                  width="100%"
+                  height="600px"
+                  style={{ border: "none" }}
+                />
+              </div>
+            </div>
+          )}
+
+          {renderResumoCard()}
 
           <div className={styles.sectionDivider}>
-            Pedidos vinculados ao seu grupo:
+            Acompanhe abaixo os pedidos que você solicitou:
           </div>
 
-          {pedidosFiltradosOrdenados.length > 0 ? (
+          {filteredAndSortedOrders.length > 0 ? (
             <div className={styles.grid}>
-              {pedidosFiltradosOrdenados.map((pedido) => (
-                <div key={pedido.Id} className={styles.card}>
+              {filteredAndSortedOrders.map((order) => (
+                <div key={order.Id} className={styles.card}>
                   <div className={styles.cardHeader}>
-                    <h3>{pedido.Title}</h3>
-                    {pedido.Status && (
+                    <h3>{order.Title}</h3>
+                    {order.Status && (
                       <span
-                        className={`${styles.statusBadge} ${getStatusClass(
-                          pedido.Status
+                        className={`${styles.statusBadge} ${getStatusStyle(
+                          order.Status
                         )}`}
                       >
-                        {pedido.Status}
+                        {order.Status}
                       </span>
                     )}
                   </div>
-
                   <div className={styles.cardBody}>
                     <p>
-                      {pedido.DetalhesdoPedido || "Sem descrição fornecida."}
+                      {order.DetalhesdoPedido || "Sem descrição fornecida."}
                     </p>
                   </div>
-
                   <div className={styles.cardFooter}>
                     <span className={styles.dataLabel}>📅 Data do Pedido:</span>{" "}
                     <span className={styles.dataValue}>
-                      {formatarData(pedido.DatadoPedido)}
+                      {formatDate(order.DatadoPedido)}
                     </span>
                   </div>
                 </div>
@@ -215,7 +285,7 @@ const PedidosMembership: React.FC<IPedidosMembershipProps> = (props) => {
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <p>🚫 Nenhum pedido foi encontrado para esse grupo.</p>
+              <p>🚫 Nenhum pedido foi encontrado.</p>
             </div>
           )}
         </section>
